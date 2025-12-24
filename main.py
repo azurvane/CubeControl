@@ -29,25 +29,41 @@ def run_hand_tracking():
                 print("Ignoring empty camera frame.")
                 continue
             
+            frame = cv2.flip(frame, 1)
+            
             # Convert the BGR image to RGB
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = hands.process(frame_rgb)
             
-            if results.multi_hand_landmarks:
-                for hand_landmarks in results.multi_hand_landmarks:
+            if results.multi_hand_landmarks and results.multi_handedness:
+                for hand_landmarks, handedness in zip(
+                    results.multi_hand_landmarks,
+                    results.multi_handedness
+                    ):
+                    
                     IMPORTANT_POINTS = [
                         mp_hands.HandLandmark.INDEX_FINGER_TIP,
                         mp_hands.HandLandmark.THUMB_TIP,
                     ]
+                    
+                    hand_label = handedness.classification[0].label
                     
                     h, w, _ = frame.shape
                     for idx in IMPORTANT_POINTS:
                         lm = hand_landmarks.landmark[idx]
                         cx, cy = int(lm.x * w), int(lm.y * h)
                         cv2.circle(frame, (cx, cy), 48, (255, 253, 208), -1)
+                    
+                    wrist = hand_landmarks.landmark[mp_hands.HandLandmark.WRIST]
+                    x, y = int(wrist.x * w), int(wrist.y * h)
+                    
+                    cv2.putText(
+                        frame, hand_label, (x - 30, y - 20), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
+                        )
             
             # display the frame
-            cv2.imshow('Hand Tracking', cv2.flip(frame, 1))
+            cv2.imshow('Hand Tracking', frame)
             
             # Exit on 'q' key press
             if cv2.waitKey(1) & 0xFF == ord('q'):
